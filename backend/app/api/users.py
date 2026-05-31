@@ -60,6 +60,13 @@ async def get_user_profile(
         shelf_out = ShelfBookOut.model_validate(shelf)
         grouped[shelf.status.value].append(shelf_out)
 
-    user_out = UserWithShelves.model_validate(user)
-    user_out.shelves = grouped
-    return user_out
+    # Build explicitly from scalar columns: model_validate(user) would read
+    # the lazy `shelves` relationship and raise MissingGreenlet.
+    return UserWithShelves(
+        id=user.id,
+        email=user.email,
+        username=user.username,
+        avatar_url=user.avatar_url,
+        created_at=user.created_at,
+        shelves=grouped,
+    )

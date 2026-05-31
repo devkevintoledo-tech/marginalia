@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.post import Post
 from app.models.user import User
-from app.schemas.thread import PostCreate, PostOut
+from app.schemas.thread import PostCreate, PostOut, post_out_from_orm
 from app.services.auth import get_current_user
 
 router = APIRouter(prefix="/posts", tags=["posts"])
@@ -40,7 +40,7 @@ async def create_post(
     db.add(post)
     await db.flush()
     await db.refresh(post)
-    return PostOut.model_validate(post)
+    return post_out_from_orm(post)
 
 
 @router.post("/{id}/upvote", response_model=PostOut)
@@ -56,4 +56,4 @@ async def upvote_post(
     post.upvotes += 1
     await db.flush()
     await db.refresh(post)
-    return PostOut.model_validate(post)
+    return post_out_from_orm(post)

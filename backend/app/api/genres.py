@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.schemas.book import BookOut, GenreOut
+from app.schemas.thread import ThreadSummary
 from app.models.book import Book  # type: ignore[import]
 from app.models.genre import Genre  # type: ignore[import]
+from app.models.post import Post  # type: ignore[import]
 from app.models.thread import Thread  # type: ignore[import]
+from app.models.user import User  # type: ignore[import]
 
 router = APIRouter(prefix="/genres", tags=["genres"])
 
@@ -40,13 +43,25 @@ async def get_genre_books(slug: str, db: AsyncSession = Depends(get_db)):
     return result.scalars().all()
 
 
-@router.get("/{slug}/threads")
+@router.get("/{slug}/threads", response_model=list[ThreadSummary])
 async def get_genre_threads(slug: str, db: AsyncSession = Depends(get_db)):
     genre = await _get_genre_or_404(slug, db)
     stmt = (
-        select(Thread)
+        select(
+            Thread.id,
+            Thread.title,
+            Thread.upvotes,
+            Thread.book_id,
+            User.username.label("author"),
+            Genre.slug.label("genre_slug"),
+            func.count(Post.id).label("post_count"),
+        )
+        .join(User, Thread.user_id == User.id)
+        .outerjoin(Genre, Thread.genre_id == Genre.id)
+        .outerjoin(Post, Post.thread_id == Thread.id)
         .where(Thread.genre_id == genre.id)
+        .group_by(Thread.id, User.username, Genre.slug)
         .order_by(Thread.upvotes.desc())
     )
-    result = await db.execute(stmt)
-    return result.scalars().all()
+    rows = (await db.execute(stmt)).all()
+    return [ThreadSummary.model_validate(row) for row in rows]

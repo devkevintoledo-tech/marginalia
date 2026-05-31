@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,19 +14,25 @@ from app.models.user import User
 
 settings = Settings()
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 bearer_scheme = HTTPBearer()
 
 ALGORITHM = "HS256"
 DEFAULT_EXPIRE_MINUTES = 30
 
 
+# Use bcrypt directly: passlib 1.7.4 is incompatible with bcrypt >= 4.1.
+# bcrypt only considers the first 72 bytes of a password, so truncate
+# explicitly (newer bcrypt raises instead of truncating silently).
 def hash_password(plain: str) -> str:
-    return pwd_context.hash(plain)
+    pw = plain.encode("utf-8")[:72]
+    return bcrypt.hashpw(pw, bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    try:
+        return bcrypt.checkpw(plain.encode("utf-8")[:72], hashed.encode("utf-8"))
+    except (ValueError, TypeError):
+        return False
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:

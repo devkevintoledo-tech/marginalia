@@ -15,20 +15,26 @@ function Register() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-65px)] bg-zinc-950 flex items-center justify-center px-4">
+    <div className="min-h-[calc(100vh-49px)] bg-zinc-950 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <h1 className="font-serif text-4xl text-zinc-100 mb-2">Create account</h1>
-        <p className="text-zinc-500 text-sm mb-8">Join the conversation on Marginalia.</p>
+        <div className="text-center mb-10">
+          <Link to="/" className="font-serif text-2xl text-zinc-100 hover:text-amber-500 transition-colors">
+            <span className="italic">M</span>arginalia
+          </Link>
+          <div className="w-8 h-0.5 bg-amber-600 mx-auto mt-4 mb-6" />
+          <h1 className="font-serif text-3xl text-zinc-100">Create account</h1>
+          <p className="text-zinc-600 text-sm mt-1">Join the conversation.</p>
+        </div>
 
         {error && (
-          <div className="bg-red-950 border border-red-800 text-red-300 px-4 py-3 text-sm mb-6">
+          <div className="border border-red-800/60 bg-red-950/40 text-red-400 px-4 py-3 text-sm mb-6">
             {error.response?.data?.message ?? 'Registration failed. Please try again.'}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-zinc-400 uppercase tracking-widest mb-1.5">
+            <label className="block text-xs font-medium text-zinc-500 uppercase tracking-widest mb-1.5">
               Email
             </label>
             <input
@@ -36,11 +42,11 @@ function Register() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full bg-zinc-900 border border-zinc-700 text-zinc-100 px-3 py-2.5 text-sm focus:outline-none focus:border-amber-700"
+              className="w-full bg-zinc-900 border border-zinc-800 text-zinc-100 px-3 py-3 text-sm focus:outline-none focus:border-amber-700 transition-colors"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-400 uppercase tracking-widest mb-1.5">
+            <label className="block text-xs font-medium text-zinc-500 uppercase tracking-widest mb-1.5">
               Username
             </label>
             <input
@@ -48,11 +54,11 @@ function Register() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
-              className="w-full bg-zinc-900 border border-zinc-700 text-zinc-100 px-3 py-2.5 text-sm focus:outline-none focus:border-amber-700"
+              className="w-full bg-zinc-900 border border-zinc-800 text-zinc-100 px-3 py-3 text-sm focus:outline-none focus:border-amber-700 transition-colors"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-400 uppercase tracking-widest mb-1.5">
+            <label className="block text-xs font-medium text-zinc-500 uppercase tracking-widest mb-1.5">
               Password
             </label>
             <input
@@ -60,21 +66,21 @@ function Register() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full bg-zinc-900 border border-zinc-700 text-zinc-100 px-3 py-2.5 text-sm focus:outline-none focus:border-amber-700"
+              className="w-full bg-zinc-900 border border-zinc-800 text-zinc-100 px-3 py-3 text-sm focus:outline-none focus:border-amber-700 transition-colors"
             />
           </div>
           <button
             type="submit"
             disabled={isPending}
-            className="w-full bg-amber-700 text-zinc-100 py-2.5 text-sm font-semibold uppercase tracking-widest hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-amber-700 text-zinc-100 py-3 text-xs font-semibold uppercase tracking-widest hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
           >
             {isPending ? 'Creating account...' : 'Create account'}
           </button>
         </form>
 
-        <p className="text-zinc-500 text-sm mt-6 text-center">
+        <p className="text-zinc-600 text-sm mt-6 text-center">
           Already have an account?{' '}
-          <Link to="/login" className="text-amber-600 hover:text-amber-500">
+          <Link to="/login" className="text-amber-600 hover:text-amber-500 transition-colors">
             Sign in
           </Link>
         </p>

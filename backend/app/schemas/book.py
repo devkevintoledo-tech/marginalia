@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
@@ -8,20 +9,20 @@ from pydantic import BaseModel, ConfigDict
 class BookOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
+    id: UUID
     open_library_id: str
     title: str | None
     author: str | None
     cover_url: str | None
     description: str | None
     published_year: int | None
-    genre_id: int | None
+    genre_id: UUID | None
 
 
 class GenreOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
+    id: UUID
     name: str
     slug: str
     description: str | None

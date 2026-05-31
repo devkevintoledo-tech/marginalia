@@ -5,10 +5,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.models.genre import Genre
 from app.models.thread import Thread
 from app.models.post import Post
 from app.models.user import User
-from app.schemas.thread import PostOut, ThreadCreate, ThreadOut
+from app.schemas.thread import PostOut, ThreadCreate, ThreadOut, post_out_from_orm
 from app.services.auth import get_current_user
 
 router = APIRouter(prefix="/threads", tags=["threads"])
@@ -20,15 +21,32 @@ async def create_thread(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ThreadOut:
-    # ThreadCreate validator already enforces XOR; no extra check needed here.
+    # ThreadCreate validator already enforces book XOR genre target.
+    genre_id = payload.genre_id
+    if payload.genre_slug and genre_id is None:
+        genre = (
+            await db.execute(select(Genre).where(Genre.slug == payload.genre_slug))
+        ).scalar_one_or_none()
+        if genre is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Genre not found"
+            )
+        genre_id = genre.id
+
     thread = Thread(
         title=payload.title,
         user_id=current_user.id,
         book_id=payload.book_id,
-        genre_id=payload.genre_id,
+        genre_id=genre_id,
     )
     db.add(thread)
     await db.flush()
+
+    # Optional opening post seeds the thread with its first message.
+    if payload.body:
+        db.add(Post(thread_id=thread.id, user_id=current_user.id, content=payload.body))
+        await db.flush()
+
     await db.refresh(thread)
     return ThreadOut.model_validate(thread)
 
@@ -47,26 +65,34 @@ async def get_thread(
     if thread is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found")
 
-    # Fetch top-level posts (no parent)
-    top_result = await db.execute(
-        select(Post).where(Post.thread_id == id, Post.parent_id.is_(None))
-    )
-    top_posts = top_result.scalars().all()
-
-    # Fetch replies for each top-level post
-    posts_out: list[PostOut] = []
-    for post in top_posts:
-        replies_result = await db.execute(
-            select(Post).where(Post.parent_id == post.id)
+    # One query for every post in the thread; assemble the reply tree in
+    # Python so we never touch a lazy relationship.
+    all_posts = (
+        await db.execute(
+            select(Post).where(Post.thread_id == id).order_by(Post.created_at)
         )
-        replies = replies_result.scalars().all()
-        post_out = PostOut.model_validate(post)
-        post_out.replies = [PostOut.model_validate(r) for r in replies]
-        posts_out.append(post_out)
+    ).scalars().all()
 
-    thread_out = ThreadWithPosts.model_validate(thread)
-    thread_out.posts = posts_out
-    return thread_out
+    nodes = {post.id: post_out_from_orm(post) for post in all_posts}
+    roots: list[PostOut] = []
+    for post in all_posts:
+        node = nodes[post.id]
+        parent = nodes.get(post.parent_id) if post.parent_id else None
+        if parent is not None:
+            parent.replies.append(node)
+        else:
+            roots.append(node)
+
+    return ThreadWithPosts(
+        id=thread.id,
+        title=thread.title,
+        user_id=thread.user_id,
+        book_id=thread.book_id,
+        genre_id=thread.genre_id,
+        upvotes=thread.upvotes,
+        created_at=thread.created_at,
+        posts=roots,
+    )
 
 
 @router.post("/{id}/upvote", response_model=ThreadOut)

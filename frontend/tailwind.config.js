@@ -6,7 +6,8 @@ export default {
         accent: '#B45309', // deep amber
       },
       fontFamily: {
-        serif: ['Georgia', 'serif'],
+        serif: ['"Playfair Display"', 'Georgia', 'serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
       }
     }
   },

@@ -17,57 +17,63 @@ function Navbar() {
   }
 
   return (
-    <nav className="bg-zinc-900 border-b border-zinc-800 px-6 py-4">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-6">
-        <Link to="/" className="font-serif text-2xl text-zinc-100 tracking-tight shrink-0">
-          Marginalia
+    <nav className="bg-zinc-950 border-b border-zinc-800/60">
+      <div className="h-0.5 bg-amber-600 w-full" />
+      <div className="max-w-7xl mx-auto px-6 py-3 flex items-center gap-8">
+        <Link to="/" className="font-serif text-xl text-zinc-100 tracking-tight shrink-0 hover:text-amber-500 transition-colors">
+          <span className="italic">M</span>arginalia
         </Link>
 
-        <div className="flex items-center gap-4 ml-auto">
-          <form onSubmit={handleSearch} className="flex">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search books, threads..."
-              className="bg-zinc-800 text-zinc-100 placeholder-zinc-500 border border-zinc-700 px-3 py-1.5 text-sm w-56 focus:outline-none focus:border-amber-700"
-            />
-            <button
-              type="submit"
-              className="bg-amber-700 text-zinc-100 px-3 py-1.5 text-sm font-medium hover:bg-amber-600 transition-colors"
-            >
-              Search
-            </button>
-          </form>
+        <form onSubmit={handleSearch} className="flex flex-1 max-w-sm">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search books..."
+            className="flex-1 bg-zinc-900 text-zinc-100 placeholder-zinc-600 border border-zinc-800 px-3 py-1.5 text-sm focus:outline-none focus:border-amber-700 transition-colors"
+          />
+          <button
+            type="submit"
+            className="bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 border border-l-0 border-zinc-800 px-3 py-1.5 text-sm transition-colors"
+          >
+            ↵
+          </button>
+        </form>
 
+        <div className="flex items-center gap-5 ml-auto">
           {user ? (
             <>
               <Link
                 to={`/profile/${user.username}`}
-                className="text-sm text-zinc-300 hover:text-zinc-100 transition-colors"
+                className="flex items-center gap-2 group"
               >
-                {user.username}
+                <span className="w-7 h-7 rounded-full bg-amber-700 flex items-center justify-center text-xs font-semibold text-zinc-100 shrink-0">
+                  {user.username[0].toUpperCase()}
+                </span>
+                <span className="text-sm text-zinc-400 group-hover:text-zinc-100 transition-colors hidden sm:block">
+                  {user.username}
+                </span>
               </Link>
               <button
                 onClick={logout}
-                className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+                className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors uppercase tracking-widest"
               >
-                Logout
+                Out
               </button>
             </>
           ) : (
             <>
               <Link
                 to="/login"
-                className="text-sm text-zinc-300 hover:text-zinc-100 transition-colors"
+                className="text-sm text-zinc-400 hover:text-zinc-100 transition-colors"
               >
-                Login
+                Sign in
               </Link>
               <Link
                 to="/register"
                 className="text-sm bg-amber-700 text-zinc-100 px-3 py-1.5 font-medium hover:bg-amber-600 transition-colors"
               >
-                Register
+                Join
               </Link>
             </>
           )}

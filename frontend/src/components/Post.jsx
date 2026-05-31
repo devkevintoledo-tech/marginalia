@@ -20,38 +20,37 @@ function Post({ post, threadId, depth = 0 }) {
   }
 
   return (
-    <div className={depth > 0 ? 'border-l-2 border-zinc-700 pl-4 ml-2' : ''}>
-      <div className="py-3">
+    <div className={depth > 0 ? 'border-l border-zinc-800 pl-5 ml-3' : ''}>
+      <div className="py-4">
         <div className="flex items-start gap-3">
-          {/* upvote */}
           <button
             onClick={handleUpvote}
             disabled={!user || upvoteMutation.isPending}
-            className="flex flex-col items-center gap-0.5 shrink-0 group pt-0.5"
-            title={user ? 'Upvote' : 'Login to upvote'}
+            className="flex flex-col items-center gap-0.5 shrink-0 group/up pt-0.5 w-8"
+            title={user ? 'Upvote' : 'Sign in to upvote'}
           >
-            <span className="text-zinc-600 group-hover:text-amber-500 transition-colors text-sm leading-none">▲</span>
-            <span className="text-amber-500 font-mono text-sm font-bold leading-none">{upvotes}</span>
+            <span className="text-zinc-700 group-hover/up:text-amber-500 transition-colors text-xs leading-none">↑</span>
+            <span className="text-amber-500 font-mono text-xs font-semibold leading-none">{upvotes}</span>
           </button>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-zinc-300 text-xs font-medium">{author}</span>
-              <span className="text-zinc-600 text-xs">{formatDate(created_at)}</span>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-amber-600 text-xs font-semibold tracking-wide">{author}</span>
+              <span className="text-zinc-700 text-xs">{formatDate(created_at)}</span>
             </div>
-            <p className="text-zinc-200 text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
+            <p className="text-zinc-300 text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
 
             {user && (
               <button
                 onClick={() => setShowReply((v) => !v)}
-                className="mt-2 text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+                className="mt-3 text-xs text-zinc-600 hover:text-zinc-400 transition-colors uppercase tracking-widest"
               >
-                {showReply ? 'Cancel' : 'Reply'}
+                {showReply ? '↩ Cancel' : '↩ Reply'}
               </button>
             )}
 
             {showReply && (
-              <div className="mt-2">
+              <div className="mt-3">
                 <PostComposer
                   threadId={threadId}
                   parentId={id}
@@ -63,9 +62,8 @@ function Post({ post, threadId, depth = 0 }) {
           </div>
         </div>
 
-        {/* nested replies */}
         {replies.length > 0 && (
-          <div className="mt-2">
+          <div className="mt-3">
             {replies.map((reply) => (
               <Post key={reply.id} post={reply} threadId={threadId} depth={depth + 1} />
             ))}

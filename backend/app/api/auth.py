@@ -64,7 +64,7 @@ async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)):
     await db.refresh(user)
 
     token = create_access_token({"sub": str(user.id)})
-    return Token(access_token=token)
+    return Token(token=token, user=UserOut.model_validate(user))
 
 
 @router.post("/login", response_model=Token)
@@ -79,7 +79,7 @@ async def login(payload: UserLogin, db: AsyncSession = Depends(get_db)):
         )
 
     token = create_access_token({"sub": str(user.id)})
-    return Token(access_token=token)
+    return Token(token=token, user=UserOut.model_validate(user))
 
 
 @router.get("/google")
@@ -115,7 +115,7 @@ async def google_callback(request: Request, db: AsyncSession = Depends(get_db)):
     await db.refresh(user)
 
     token = create_access_token({"sub": str(user.id)})
-    return Token(access_token=token)
+    return Token(token=token, user=UserOut.model_validate(user))
 
 
 @router.post("/logout")

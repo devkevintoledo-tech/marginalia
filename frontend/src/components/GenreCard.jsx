@@ -6,13 +6,18 @@ function GenreCard({ genre }) {
   return (
     <Link
       to={`/genres/${slug}`}
-      className="group bg-zinc-900 border border-zinc-800 hover:border-amber-700 transition-colors p-4 flex flex-col gap-2"
+      className="group bg-zinc-950 hover:bg-zinc-900 transition-colors p-5 flex flex-col gap-2"
     >
-      <h3 className="font-serif text-zinc-100 text-lg group-hover:text-amber-500 transition-colors">
-        {name}
-      </h3>
+      <div className="flex items-center gap-2">
+        <span className="w-0.5 h-4 bg-amber-700 group-hover:bg-amber-500 transition-colors shrink-0" />
+        <h3 className="font-serif text-zinc-200 group-hover:text-zinc-100 transition-colors leading-tight">
+          {name}
+        </h3>
+      </div>
       {description && (
-        <p className="text-zinc-500 text-sm leading-snug line-clamp-2">{description}</p>
+        <p className="text-zinc-600 text-xs leading-relaxed line-clamp-2 pl-2.5">
+          {description}
+        </p>
       )}
     </Link>
   )

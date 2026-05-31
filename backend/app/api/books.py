@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.base import Base  # noqa: F401 — ensure metadata loaded
 from app.schemas.book import BookOut, ShelfIn
+from app.schemas.thread import ThreadSummary
 from app.services import open_library
 from app.services.auth import get_current_user
 
@@ -16,8 +19,10 @@ from app.services.auth import get_current_user
 # ---------------------------------------------------------------------------
 from app.models.book import Book  # type: ignore[import]
 from app.models.genre import Genre  # type: ignore[import]  # noqa: F401
+from app.models.post import Post  # type: ignore[import]
 from app.models.shelf import Shelf  # type: ignore[import]
 from app.models.thread import Thread  # type: ignore[import]
+from app.models.user import User  # type: ignore[import]
 
 router = APIRouter(prefix="/books", tags=["books"])
 
@@ -26,7 +31,7 @@ router = APIRouter(prefix="/books", tags=["books"])
 # Helpers
 # ---------------------------------------------------------------------------
 
-async def _get_book_or_404(book_id: int, db: AsyncSession) -> Book:
+async def _get_book_or_404(book_id: UUID, db: AsyncSession) -> Book:
     result = await db.get(Book, book_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Book not found")
@@ -80,30 +85,42 @@ async def search_books(
 
 @router.get("/{book_id}", response_model=BookOut)
 async def get_book(
-    book_id: int,
+    book_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
     return await _get_book_or_404(book_id, db)
 
 
-@router.get("/{book_id}/threads")
+@router.get("/{book_id}/threads", response_model=list[ThreadSummary])
 async def get_book_threads(
-    book_id: int,
+    book_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
     await _get_book_or_404(book_id, db)
     stmt = (
-        select(Thread)
+        select(
+            Thread.id,
+            Thread.title,
+            Thread.upvotes,
+            Thread.book_id,
+            User.username.label("author"),
+            Genre.slug.label("genre_slug"),
+            func.count(Post.id).label("post_count"),
+        )
+        .join(User, Thread.user_id == User.id)
+        .outerjoin(Genre, Thread.genre_id == Genre.id)
+        .outerjoin(Post, Post.thread_id == Thread.id)
         .where(Thread.book_id == book_id)
+        .group_by(Thread.id, User.username, Genre.slug)
         .order_by(Thread.upvotes.desc())
     )
-    result = await db.execute(stmt)
-    return result.scalars().all()
+    rows = (await db.execute(stmt)).all()
+    return [ThreadSummary.model_validate(row) for row in rows]
 
 
 @router.post("/{book_id}/shelf", status_code=status.HTTP_201_CREATED)
 async def add_to_shelf(
-    book_id: int,
+    book_id: UUID,
     payload: ShelfIn,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -130,7 +147,7 @@ async def add_to_shelf(
 
 @router.put("/{book_id}/shelf")
 async def update_shelf(
-    book_id: int,
+    book_id: UUID,
     payload: ShelfIn,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -150,7 +167,7 @@ async def update_shelf(
 
 @router.delete("/{book_id}/shelf", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_from_shelf(
-    book_id: int,
+    book_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
