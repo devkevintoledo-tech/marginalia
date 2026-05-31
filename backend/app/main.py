@@ -1,0 +1,37 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
+
+from app.config import Settings
+
+settings = Settings()
+
+app = FastAPI(title=settings.APP_NAME)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Required by Authlib for storing OAuth state
+app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
+
+from app.api.auth import router as auth_router  # noqa: E402
+from app.api import books, genres, posts, threads, users  # noqa: E402
+
+# All routers are mounted under /api to match the frontend client baseURL.
+# Each router already carries its own resource prefix (e.g. /auth, /books).
+app.include_router(auth_router, prefix="/api")
+app.include_router(books.router, prefix="/api")
+app.include_router(genres.router, prefix="/api")
+app.include_router(threads.router, prefix="/api")
+app.include_router(posts.router, prefix="/api")
+app.include_router(users.router, prefix="/api")
+
+
+@app.get("/")
+async def root():
+    return {"name": settings.APP_NAME}
