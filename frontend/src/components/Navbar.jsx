@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import useAuthStore from '../store/auth'
+import client from '../api/client'
 
 function Navbar() {
   const [query, setQuery] = useState('')
@@ -55,7 +56,10 @@ function Navbar() {
                 </span>
               </Link>
               <button
-                onClick={logout}
+                onClick={async () => {
+                  try { await client.post('/auth/logout') } catch { /* JWT is stateless — clear locally regardless */ }
+                  logout()
+                }}
                 className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors uppercase tracking-widest"
               >
                 Out
