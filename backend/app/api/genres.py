@@ -43,7 +43,13 @@ async def get_genre_books(
     offset: int = Query(0, ge=0),
 ):
     genre = await _get_genre_or_404(slug, db)
-    stmt = select(Book).where(Book.genre_id == genre.id).limit(limit).offset(offset)
+    stmt = (
+        select(Book)
+        .where(Book.genre_id == genre.id)
+        .order_by(Book.title)
+        .limit(limit)
+        .offset(offset)
+    )
     result = await db.execute(stmt)
     return result.scalars().all()
 

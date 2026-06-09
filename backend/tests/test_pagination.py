@@ -97,7 +97,17 @@ async def test_genre_threads_limit_and_offset(client, db_session, seed_user, gen
     assert len(page2.json()) == 1
 
 
-async def test_limit_over_100_rejected(client, db_session, seed_user, book):
-    await _seed_book_threads(db_session, seed_user, book, 3)
-    resp = await client.get(f"/api/books/{book.id}/threads?limit=999")
-    assert resp.status_code == 422
+async def test_limit_constraints(client, db_session, seed_user, book, genre):
+    # limit > 100 rejected on all three endpoints
+    r1 = await client.get(f"/api/books/{book.id}/threads?limit=999")
+    assert r1.status_code == 422
+
+    r2 = await client.get(f"/api/genres/{genre.slug}/books?limit=999")
+    assert r2.status_code == 422
+
+    r3 = await client.get(f"/api/genres/{genre.slug}/threads?limit=999")
+    assert r3.status_code == 422
+
+    # negative offset rejected
+    r4 = await client.get(f"/api/books/{book.id}/threads?offset=-1")
+    assert r4.status_code == 422
