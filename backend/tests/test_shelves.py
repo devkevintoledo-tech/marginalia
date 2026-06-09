@@ -107,3 +107,28 @@ async def test_shelf_requires_auth(client, book):
         json={"status": "want_to_read"},
     )
     assert resp.status_code in (401, 403)
+
+
+async def test_shelf_post_and_put_have_documented_response_model(client):
+    """POST and PUT shelf routes must declare a response_model so OpenAPI
+    documents the shape with a $ref to ShelfOut (not an empty schema {}).
+    Without response_model, FastAPI emits schema: {} — no field documentation."""
+    resp = await client.get("/openapi.json")
+    assert resp.status_code == 200
+    schema = resp.json()
+
+    post_response_schema = (
+        schema["paths"]["/api/books/{book_id}/shelf"]["post"]
+        ["responses"]["201"]["content"]["application/json"]["schema"]
+    )
+    assert post_response_schema != {}, (
+        "POST /shelf response schema is empty — add response_model=ShelfOut"
+    )
+
+    put_response_schema = (
+        schema["paths"]["/api/books/{book_id}/shelf"]["put"]
+        ["responses"]["200"]["content"]["application/json"]["schema"]
+    )
+    assert put_response_schema != {}, (
+        "PUT /shelf response schema is empty — add response_model=ShelfOut"
+    )

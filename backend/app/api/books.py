@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.base import Base  # noqa: F401 — ensure metadata loaded
-from app.schemas.book import BookOut, ShelfIn
+from app.schemas.book import BookOut, ShelfIn, ShelfOut
 from app.schemas.thread import ThreadSummary
 from app.services import open_library
 from app.services.auth import get_current_user
@@ -118,7 +118,7 @@ async def get_book_threads(
     return [ThreadSummary.model_validate(row) for row in rows]
 
 
-@router.post("/{book_id}/shelf", status_code=status.HTTP_201_CREATED)
+@router.post("/{book_id}/shelf", response_model=ShelfOut, status_code=status.HTTP_201_CREATED)
 async def add_to_shelf(
     book_id: UUID,
     payload: ShelfIn,
@@ -145,7 +145,7 @@ async def add_to_shelf(
     return shelf
 
 
-@router.put("/{book_id}/shelf")
+@router.put("/{book_id}/shelf", response_model=ShelfOut)
 async def update_shelf(
     book_id: UUID,
     payload: ShelfIn,

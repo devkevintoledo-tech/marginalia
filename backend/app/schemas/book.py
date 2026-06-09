@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import uuid
+from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
+
+from app.models.shelf import ShelfStatus
 
 
 class BookOut(BaseModel):
@@ -30,3 +34,13 @@ class GenreOut(BaseModel):
 
 class ShelfIn(BaseModel):
     status: Literal["want_to_read", "reading", "read"]
+
+
+class ShelfOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    user_id: uuid.UUID
+    book_id: uuid.UUID
+    status: ShelfStatus
+    created_at: datetime
