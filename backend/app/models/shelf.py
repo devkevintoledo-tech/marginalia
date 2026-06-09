@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, text
+from sqlalchemy import DateTime, Enum, ForeignKey, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -16,6 +16,7 @@ class ShelfStatus(str, enum.Enum):
 
 class Shelf(Base):
     __tablename__ = "shelves"
+    __table_args__ = (UniqueConstraint("user_id", "book_id", name="uq_shelf_user_book"),)
 
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True,
