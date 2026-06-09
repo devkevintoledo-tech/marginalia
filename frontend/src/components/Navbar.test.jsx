@@ -24,7 +24,8 @@ function renderNavbar() {
 }
 
 beforeEach(() => {
-  useAuthStore.setState({ user: { username: 'ada', id: '1' }, token: 'tok' })
+  const { setAuth, logout } = useAuthStore.getState()
+  useAuthStore.setState({ user: { username: 'ada', id: '1' }, token: 'tok', setAuth, logout }, true)
   vi.clearAllMocks()
 })
 
@@ -49,6 +50,7 @@ describe('Navbar logout', () => {
 
     await waitFor(() => {
       expect(useAuthStore.getState().token).toBeNull()
+      expect(useAuthStore.getState().user).toBeNull()
     })
   })
 })
