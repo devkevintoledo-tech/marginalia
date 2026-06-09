@@ -95,6 +95,8 @@ async def get_book(
 async def get_book_threads(
     book_id: UUID,
     db: AsyncSession = Depends(get_db),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
     await _get_book_or_404(book_id, db)
     stmt = (
@@ -113,6 +115,8 @@ async def get_book_threads(
         .where(Thread.book_id == book_id)
         .group_by(Thread.id, User.username, Genre.slug)
         .order_by(Thread.upvotes.desc())
+        .limit(limit)
+        .offset(offset)
     )
     rows = (await db.execute(stmt)).all()
     return [ThreadSummary.model_validate(row) for row in rows]

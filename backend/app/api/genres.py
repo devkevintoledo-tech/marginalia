@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,15 +36,25 @@ async def get_genre(slug: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{slug}/books", response_model=list[BookOut])
-async def get_genre_books(slug: str, db: AsyncSession = Depends(get_db)):
+async def get_genre_books(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
     genre = await _get_genre_or_404(slug, db)
-    stmt = select(Book).where(Book.genre_id == genre.id)
+    stmt = select(Book).where(Book.genre_id == genre.id).limit(limit).offset(offset)
     result = await db.execute(stmt)
     return result.scalars().all()
 
 
 @router.get("/{slug}/threads", response_model=list[ThreadSummary])
-async def get_genre_threads(slug: str, db: AsyncSession = Depends(get_db)):
+async def get_genre_threads(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
     genre = await _get_genre_or_404(slug, db)
     stmt = (
         select(
@@ -62,6 +72,8 @@ async def get_genre_threads(slug: str, db: AsyncSession = Depends(get_db)):
         .where(Thread.genre_id == genre.id)
         .group_by(Thread.id, User.username, Genre.slug)
         .order_by(Thread.upvotes.desc())
+        .limit(limit)
+        .offset(offset)
     )
     rows = (await db.execute(stmt)).all()
     return [ThreadSummary.model_validate(row) for row in rows]
