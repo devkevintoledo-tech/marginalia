@@ -6,11 +6,9 @@ from sqlalchemy.exc import IntegrityError
 from app.models.shelf import Shelf, ShelfStatus
 from app.models.user import User, AuthProvider
 
-pytestmark = pytest.mark.asyncio
-
 
 # ---------------------------------------------------------------------------
-# API tests
+# DB-level tests
 # ---------------------------------------------------------------------------
 
 
@@ -34,6 +32,9 @@ async def test_shelf_db_rejects_duplicate_user_book(db_session, book):
     await db_session.rollback()
 
 
+# --- API tests ---
+
+
 async def test_add_book_to_shelf(client, auth_headers, book):
     resp = await client.post(
         f"/api/books/{book.id}/shelf",
@@ -47,11 +48,12 @@ async def test_add_book_to_shelf(client, auth_headers, book):
 
 
 async def test_add_duplicate_shelf_returns_409(client, auth_headers, book):
-    await client.post(
+    r1 = await client.post(
         f"/api/books/{book.id}/shelf",
         json={"status": "want_to_read"},
         headers=auth_headers,
     )
+    assert r1.status_code == 201, r1.text
     resp = await client.post(
         f"/api/books/{book.id}/shelf",
         json={"status": "reading"},
@@ -61,11 +63,12 @@ async def test_add_duplicate_shelf_returns_409(client, auth_headers, book):
 
 
 async def test_update_shelf_status(client, auth_headers, book):
-    await client.post(
+    r1 = await client.post(
         f"/api/books/{book.id}/shelf",
         json={"status": "want_to_read"},
         headers=auth_headers,
     )
+    assert r1.status_code == 201, r1.text
     resp = await client.put(
         f"/api/books/{book.id}/shelf",
         json={"status": "read"},
@@ -85,11 +88,12 @@ async def test_update_nonexistent_shelf_returns_404(client, auth_headers, book):
 
 
 async def test_remove_from_shelf(client, auth_headers, book):
-    await client.post(
+    r1 = await client.post(
         f"/api/books/{book.id}/shelf",
         json={"status": "reading"},
         headers=auth_headers,
     )
+    assert r1.status_code == 201, r1.text
     resp = await client.delete(f"/api/books/{book.id}/shelf", headers=auth_headers)
     assert resp.status_code == 204
 
@@ -121,14 +125,10 @@ async def test_shelf_post_and_put_have_documented_response_model(client):
         schema["paths"]["/api/books/{book_id}/shelf"]["post"]
         ["responses"]["201"]["content"]["application/json"]["schema"]
     )
-    assert post_response_schema != {}, (
-        "POST /shelf response schema is empty — add response_model=ShelfOut"
-    )
+    assert "$ref" in post_response_schema or "properties" in post_response_schema, post_response_schema
 
     put_response_schema = (
         schema["paths"]["/api/books/{book_id}/shelf"]["put"]
         ["responses"]["200"]["content"]["application/json"]["schema"]
     )
-    assert put_response_schema != {}, (
-        "PUT /shelf response schema is empty — add response_model=ShelfOut"
-    )
+    assert "$ref" in put_response_schema or "properties" in put_response_schema, put_response_schema

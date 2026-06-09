@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import uuid
 from datetime import datetime
 from typing import Literal
 from uuid import UUID
@@ -39,8 +38,8 @@ class ShelfIn(BaseModel):
 class ShelfOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: uuid.UUID
-    user_id: uuid.UUID
-    book_id: uuid.UUID
+    id: UUID
+    user_id: UUID
+    book_id: UUID
     status: ShelfStatus
     created_at: datetime
