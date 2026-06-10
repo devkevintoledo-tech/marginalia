@@ -1,0 +1,118 @@
+# Marginalia Roadmap
+
+A phased feature plan for Marginalia — a social reading platform (Reddit-style
+threaded book discussion + Goodreads-style catalog). The authoritative product
+spec is [`marginalia_spec.md`](./marginalia_spec.md); this file tracks **what
+exists, what's next, and in what order**.
+
+**Status legend:** ✅ done · 🟡 partial / stubbed · ⬜ not started
+
+The current code is a functionally complete v1 MVP (6 models, ~20 endpoints, 8
+wired frontend pages) with no automated tests. Phase 0 closes that gap and
+hardens the MVP; later phases extend it along the spec's "out of scope for v1"
+list.
+
+---
+
+## Phase 0 — Foundations & Hardening
+
+Make the MVP safe to change. This is the current focus.
+
+| Status | Feature | Touches |
+| --- | --- | --- |
+| 🟡 | **Test pyramid** — pytest (backend), Vitest + RTL (frontend unit), Playwright (e2e). Starter tests for login, create-thread, reply landed; full coverage ongoing. | `backend/tests/`, `frontend/src/**/*.test.jsx`, `frontend/e2e/` |
+| ⬜ | **CI workflow** — run backend + frontend unit tests on push/PR; e2e nightly. | `.github/workflows/` |
+| ⬜ | **Shelf uniqueness** — add `UNIQUE (user_id, book_id)` + migration (known gap in `CLAUDE.md`). | `backend/app/models/shelf.py`, `backend/alembic/versions/` |
+| ⬜ | **Real logout / token handling** — `/auth/logout` is a no-op stub; decide on refresh tokens or short-lived JWT + client clear. | `backend/app/api/auth.py:121`, `frontend/src/store/auth.js` |
+| ⬜ | **Pagination** — list endpoints return full result sets; add `limit`/`offset` (or cursor) to book/genre/thread lists. | `backend/app/api/{books,genres,threads}.py` |
+| ⬜ | **OpenAPI polish** — tags exist; add response models/examples, surface `/docs`. | `backend/app/main.py` |
+| ⬜ | **404 / error pages** — no `NotFound` route component; generic error strings only. | `frontend/src/App.jsx`, `frontend/src/pages/` |
+
+---
+
+## Phase 1 — MVP Completion
+
+Round out the spec'd v1 behaviors that are schema-ready but not exposed.
+
+| Status | Feature | Touches |
+| --- | --- | --- |
+| ✅ | Email/password + Google OAuth auth, JWT sessions | `backend/app/api/auth.py`, `backend/app/services/auth.py` |
+| ✅ | Open Library search + book cache, genre pages, shelves | `backend/app/api/{books,genres,users}.py`, `backend/app/services/open_library.py` |
+| ✅ | Threads (book XOR genre), 2-level posts/replies, upvotes | `backend/app/api/{threads,posts}.py`, `frontend/src/pages/Thread.jsx` |
+| ⬜ | **Edit/delete threads & posts** — no endpoints today; content is immutable. | `backend/app/api/{threads,posts}.py`, `frontend/src/components/Post.jsx` |
+| ⬜ | **Vote toggling / downvotes** — upvote only increments; add un-vote and per-user vote tracking (new `votes` table). | `backend/app/api/{threads,posts}.py`, new model |
+| ⬜ | **Profile editing** — `User` has only `avatar_url`; add bio + edit endpoint/page. | `backend/app/models/user.py`, `backend/app/api/users.py`, `frontend/src/pages/Profile.jsx` |
+| ⬜ | **Thread sorting/filtering** — sort by new/top, filter genre threads by date. | `backend/app/api/{books,genres}.py`, `frontend/src/pages/{Book,Genre}.jsx` |
+| ⬜ | **Empty/loading-state polish** across pages. | `frontend/src/pages/` |
+
+---
+
+## Phase 2 — Social Graph
+
+Explicitly out of scope for v1 in the spec; the natural next layer.
+
+| Status | Feature | Touches |
+| --- | --- | --- |
+| ⬜ | **Follow users** — `follows` table, follow/unfollow endpoints, follower counts on profile. | new model, `backend/app/api/users.py`, `frontend/src/pages/Profile.jsx` |
+| ⬜ | **Activity feed** — home feed of followed users' threads/posts/shelf activity. | new endpoint, `frontend/src/pages/Home.jsx` |
+| ⬜ | **Notifications** — replies, mentions, upvotes; `notifications` table + read/unread. | new model + endpoints, new navbar component |
+| ⬜ | **Thread subscriptions** — subscribe/notify on new replies. | new model, `backend/app/api/threads.py` |
+
+---
+
+## Phase 3 — Discovery
+
+| Status | Feature | Touches |
+| --- | --- | --- |
+| ⬜ | **Trending** — surface hot books/genres/threads by recent upvotes + post velocity. | new endpoint, `frontend/src/pages/Home.jsx` |
+| ⬜ | **Full-text search** — search across thread titles + post content (Postgres FTS / `tsvector`). | new endpoint + migration, `frontend/src/pages/Search.jsx` |
+| ⬜ | **Search filters** — book search by genre/author/year. | `backend/app/api/books.py`, `frontend/src/pages/Search.jsx` |
+| ⬜ | **Recommendations** — book/thread suggestions from shelves + follows. | new service |
+
+---
+
+## Phase 4 — Rich Content
+
+Spec lists ratings, reading-progress, and spoiler tags as out of scope for v1.
+
+| Status | Feature | Touches |
+| --- | --- | --- |
+| ⬜ | **Markdown / rich-text posts** — render + sanitize; schema unchanged (content stays text). | `frontend/src/components/{Post,PostComposer}.jsx` |
+| ⬜ | **Image & avatar uploads** — object storage + signed URLs. | new service, `backend/app/api/users.py` |
+| ⬜ | **Book ratings** — star ratings, aggregate on book page. | new model/migration, `frontend/src/pages/Book.jsx` |
+| ⬜ | **Reading-progress tracking** — page/percent on shelf entries. | `backend/app/models/shelf.py` + migration |
+| ⬜ | **Spoiler tags** — inline spoiler markup, click-to-reveal. | `frontend/src/components/Post.jsx` |
+
+---
+
+## Phase 5 — Moderation & Admin
+
+No moderation surface exists today (no roles, flags, or admin tools).
+
+| Status | Feature | Touches |
+| --- | --- | --- |
+| ⬜ | **Roles & permissions** — `role` on `User`, admin dependency. | `backend/app/models/user.py`, `backend/app/services/auth.py` |
+| ⬜ | **Reporting / flagging** — report threads/posts; moderation queue. | new model + endpoints |
+| ⬜ | **Admin dashboard** — review reports, remove content, manage users. | new frontend area |
+| ⬜ | **Genre CRUD** — genres are seed-only via migration today; admin create/edit. | `backend/app/api/genres.py` |
+| ⬜ | **Audit trail + rate limiting** — who-changed-what; throttle write endpoints. | middleware, new model |
+
+---
+
+## Phase 6 — Scale & Ops
+
+| Status | Feature | Touches |
+| --- | --- | --- |
+| ⬜ | **Background jobs / queue** — async Open Library sync, notification fan-out. | new worker service |
+| ⬜ | **Email verification + password reset** — transactional email flows. | `backend/app/api/auth.py`, email service |
+| ⬜ | **Data export** — user shelf/post export. | new endpoint |
+| ⬜ | **Observability** — structured logging, metrics, error tracking. | `backend/app/main.py`, infra |
+
+---
+
+## Working on this repo
+
+Feature work is delegated to focused subagents defined in
+[`.claude/agents/`](./.claude/agents): `backend-dev`, `frontend-dev`,
+`test-engineer`, and `code-reviewer`. See [`CLAUDE.md`](./CLAUDE.md) for
+architecture, conventions, gotchas, and test commands.

@@ -32,7 +32,36 @@ npm run dev        # vite dev server
 npm run build      # production build
 ```
 
-There is **no test suite, linter, or formatter configured** in this repo yet. Don't claim tests pass — there are none to run.
+### Testing
+
+A test pyramid exists; there is no linter/formatter configured yet. Always run tests before claiming they pass.
+
+**Backend — pytest** (async, `asyncio_mode=auto`, httpx `ASGITransport`). Tests run against a **separate `marginalia_test` database** so they never touch dev data; the schema is built with `Base.metadata.create_all` (not Alembic) per test, and Open Library must be mocked (`respx`) — never hit the network. From `backend/`:
+
+```bash
+docker compose up -d db                                                   # Postgres must be running
+docker compose exec db psql -U marginalia -c "CREATE DATABASE marginalia_test;"   # one-time
+DATABASE_URL=postgresql+asyncpg://marginalia:marginalia@localhost:5432/marginalia_test pytest
+```
+
+**Frontend unit — Vitest + React Testing Library** (jsdom). From `frontend/`:
+
+```bash
+npm test            # vitest run
+npm run test:watch  # watch mode
+```
+
+**E2E — Playwright** drives the real app and needs the full stack up. From `frontend/`:
+
+```bash
+docker compose up --build      # in another terminal
+npx playwright install         # one-time
+npm run test:e2e               # auth flow is network-free; thread/reply use live Open Library search
+```
+
+### Subagents & roadmap
+
+Feature work is delegated to focused subagents in `.claude/agents/`: `backend-dev`, `frontend-dev`, `test-engineer`, and `code-reviewer`. The phased feature plan lives in `ROADMAP.md` (Phase 0 = test/hardening foundations is the current focus).
 
 ## Architecture
 
