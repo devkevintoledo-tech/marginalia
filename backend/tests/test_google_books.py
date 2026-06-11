@@ -98,3 +98,81 @@ async def test_search_books_empty_when_no_items():
         return_value=Response(200, json={"totalItems": 0})
     )
     assert await gb.search_books("zzzz") == []
+
+
+# ---------------------------------------------------------------------------
+# Two-pass relevance: title-weighted search first, broad fallback second.
+# ---------------------------------------------------------------------------
+
+def _volume(vid: str, title: str = "T") -> dict:
+    return {"id": vid, "volumeInfo": {"title": title}}
+
+
+def _route_by_query(mapping: dict[str, list[dict]]):
+    """respx side_effect: return items keyed by the request's `q` param."""
+
+    def handler(request):
+        q = request.url.params.get("q")
+        return Response(200, json={"items": mapping.get(q, [])})
+
+    return handler
+
+
+@respx.mock
+async def test_search_books_first_pass_uses_intitle_and_country():
+    captured = {}
+
+    def handler(request):
+        captured["q"] = request.url.params.get("q")
+        captured["country"] = request.url.params.get("country")
+        captured["orderBy"] = request.url.params.get("orderBy")
+        # Enough title hits → no fallback.
+        return Response(200, json={"items": [_volume("a"), _volume("b"), _volume("c")]})
+
+    respx.get("https://www.googleapis.com/books/v1/volumes").mock(side_effect=handler)
+    await gb.search_books("wuthering heights")
+    assert captured["q"] == "intitle:wuthering heights"
+    assert captured["country"] == "US"
+    assert captured["orderBy"] == "relevance"
+
+
+@respx.mock
+async def test_search_books_no_fallback_when_enough_title_results():
+    route = respx.get("https://www.googleapis.com/books/v1/volumes").mock(
+        side_effect=_route_by_query(
+            {"intitle:dune": [_volume("a"), _volume("b"), _volume("c")]}
+        )
+    )
+    results = await gb.search_books("dune")
+    assert [r["external_id"] for r in results] == ["a", "b", "c"]
+    assert route.call_count == 1  # broad pass NOT made
+
+
+@respx.mock
+async def test_search_books_falls_back_to_broad_when_few_title_results():
+    route = respx.get("https://www.googleapis.com/books/v1/volumes").mock(
+        side_effect=_route_by_query(
+            {
+                "intitle:emily bronte": [_volume("title1")],
+                "emily bronte": [_volume("broad1"), _volume("broad2")],
+            }
+        )
+    )
+    results = await gb.search_books("emily bronte")
+    assert route.call_count == 2  # both passes made
+    # Title hit first, then broad results appended.
+    assert [r["external_id"] for r in results] == ["title1", "broad1", "broad2"]
+
+
+@respx.mock
+async def test_search_books_fallback_dedupes_by_external_id():
+    respx.get("https://www.googleapis.com/books/v1/volumes").mock(
+        side_effect=_route_by_query(
+            {
+                "intitle:grief": [_volume("shared")],
+                "grief": [_volume("shared"), _volume("unique")],
+            }
+        )
+    )
+    results = await gb.search_books("grief")
+    assert [r["external_id"] for r in results] == ["shared", "unique"]
