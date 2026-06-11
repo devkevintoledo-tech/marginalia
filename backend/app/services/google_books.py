@@ -41,6 +41,18 @@ def normalize(text: str | None) -> str:
     return re.sub(r"\s+", " ", no_punct).strip()
 
 
+def _dedup_key(volume: dict[str, Any]) -> str | None:
+    """Group key for duplicate editions: normalized title + first author.
+
+    Returns None when there is no title — such volumes are never grouped.
+    """
+    title = volume.get("title")
+    if not title:
+        return None
+    first_author = (volume.get("author") or "").split(",")[0]
+    return f"{normalize(title)}\x1f{normalize(first_author)}"
+
+
 def _category_to_slug(categories: list[str] | None) -> str | None:
     if not categories:
         return None

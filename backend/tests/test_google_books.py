@@ -198,3 +198,23 @@ def test_normalize_strips_punctuation():
 def test_normalize_handles_empty():
     assert gb.normalize("") == ""
     assert gb.normalize(None) == ""
+
+
+# ---------------------------------------------------------------------------
+# _dedup_key() helper for edition grouping.
+# ---------------------------------------------------------------------------
+
+
+def test_dedup_key_combines_title_and_first_author():
+    vol = {"title": "The Hobbit", "author": "J.R.R. Tolkien"}
+    assert gb._dedup_key(vol) == "the hobbit\x1fj r r tolkien"
+
+
+def test_dedup_key_uses_only_first_author():
+    vol = {"title": "Good Omens", "author": "Terry Pratchett, Neil Gaiman"}
+    assert gb._dedup_key(vol) == "good omens\x1fterry pratchett"
+
+
+def test_dedup_key_none_when_title_missing():
+    assert gb._dedup_key({"title": "", "author": "Anyone"}) is None
+    assert gb._dedup_key({"title": None, "author": "Anyone"}) is None
