@@ -119,8 +119,21 @@ function Book() {
         <div className="flex flex-col gap-4 flex-1 min-w-0">
           <div>
             <h1 className="font-serif text-4xl text-zinc-100 leading-tight">{book.title}</h1>
+            {book.subtitle && <p className="text-zinc-500 text-base mt-0.5 italic">{book.subtitle}</p>}
             <p className="text-zinc-400 text-lg mt-1">{book.author}</p>
-            {book.year && <p className="text-zinc-600 text-sm mt-0.5">{book.year}</p>}
+            {book.published_year && (
+              <p className="text-zinc-600 text-sm mt-0.5">{book.published_year}</p>
+            )}
+            <p className="text-zinc-500 text-sm mt-1 flex flex-wrap gap-x-3">
+              {book.publisher && <span>{book.publisher}</span>}
+              {book.page_count && <span>{book.page_count} pp</span>}
+              {book.average_rating && (
+                <span>★ {book.average_rating} ({book.ratings_count ?? 0})</span>
+              )}
+            </p>
+            {book.categories?.length > 0 && (
+              <p className="text-zinc-600 text-xs mt-1">{book.categories.join(' · ')}</p>
+            )}
           </div>
 
           {book.description && (
