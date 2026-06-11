@@ -105,15 +105,47 @@ def _params(**extra: Any) -> dict[str, Any]:
     return params
 
 
-async def search_books(query: str) -> list[dict[str, Any]]:
+# Below this many title-matched hits, supplement with a broad full-text pass so
+# we don't lose recall on author/topic searches that have no title match.
+_MIN_TITLE_RESULTS = 3
+
+
+async def _query_volumes(client: httpx.AsyncClient, q: str) -> list[dict[str, Any]]:
     url = f"{settings.GOOGLE_BOOKS_BASE_URL}/volumes"
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        response = await client.get(
-            url, params=_params(q=query, maxResults=20, printType="books")
-        )
-        response.raise_for_status()
-        data = response.json()
+    response = await client.get(
+        url,
+        params=_params(
+            q=q,
+            maxResults=20,
+            printType="books",
+            orderBy="relevance",
+            country="US",
+        ),
+    )
+    response.raise_for_status()
+    data = response.json()
     return [_map_volume(item) for item in data.get("items", []) if item.get("id")]
+
+
+async def search_books(query: str) -> list[dict[str, Any]]:
+    """Two-pass search: title-weighted first, broad full-text fallback.
+
+    A bare ``q=`` matches the phrase anywhere in the corpus (including book
+    contents), which buries the actual book under works that merely discuss it.
+    Searching ``intitle:`` first surfaces the real title; we only fall back to a
+    broad pass when the title search is too thin (e.g. author/topic queries).
+    """
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        title_results = await _query_volumes(client, f"intitle:{query}")
+        if len(title_results) >= _MIN_TITLE_RESULTS:
+            return title_results
+
+        broad_results = await _query_volumes(client, query)
+
+    seen = {r["external_id"] for r in title_results}
+    merged = list(title_results)
+    merged.extend(r for r in broad_results if r["external_id"] not in seen)
+    return merged
 
 
 async def get_book(volume_id: str) -> dict[str, Any]:
