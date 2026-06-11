@@ -39,6 +39,29 @@ async def test_search_creates_enriched_book(client):
 
 
 @respx.mock
+async def test_search_returns_503_on_upstream_error(client):
+    # Google Books throttles keyless requests with 429 — surface a clean 503,
+    # not an opaque 500.
+    respx.get("https://www.googleapis.com/books/v1/volumes").mock(
+        return_value=Response(429, json={"error": "rate limited"})
+    )
+    resp = await client.get("/api/books/search", params={"q": "darkness"})
+    assert resp.status_code == 503
+    assert "unavailable" in resp.json()["detail"].lower()
+
+
+@respx.mock
+async def test_search_returns_503_on_network_error(client):
+    import httpx
+
+    respx.get("https://www.googleapis.com/books/v1/volumes").mock(
+        side_effect=httpx.ConnectError("boom")
+    )
+    resp = await client.get("/api/books/search", params={"q": "darkness"})
+    assert resp.status_code == 503
+
+
+@respx.mock
 async def test_search_is_idempotent_on_repeat(client):
     respx.get("https://www.googleapis.com/books/v1/volumes").mock(
         return_value=Response(200, json={"items": [VOLUME]})

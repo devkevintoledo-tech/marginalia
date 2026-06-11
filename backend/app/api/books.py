@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -48,7 +49,15 @@ async def search_books(
     db: AsyncSession = Depends(get_db),
 ):
     """Search Google Books and upsert results into the local DB."""
-    results = await google_books.search_books(q)
+    try:
+        results = await google_books.search_books(q)
+    except (httpx.HTTPStatusError, httpx.RequestError) as exc:
+        # Upstream throttling (keyless 429), outages, or network failures —
+        # surface a clean 503 rather than an opaque 500.
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Book search is temporarily unavailable. Please try again shortly.",
+        ) from exc
 
     # Resolve genre slugs → ids in one pass (avoid N queries).
     slugs = {r["genre_slug"] for r in results if r.get("genre_slug")}
