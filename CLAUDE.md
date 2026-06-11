@@ -36,7 +36,7 @@ npm run build      # production build
 
 A test pyramid exists; there is no linter/formatter configured yet. Always run tests before claiming they pass.
 
-**Backend — pytest** (async, `asyncio_mode=auto`, httpx `ASGITransport`). Tests run against a **separate `marginalia_test` database** so they never touch dev data; the schema is built with `Base.metadata.create_all` (not Alembic) per test, and Open Library must be mocked (`respx`) — never hit the network. From `backend/`:
+**Backend — pytest** (async, `asyncio_mode=auto`, httpx `ASGITransport`). Tests run against a **separate `marginalia_test` database** so they never touch dev data; the schema is built with `Base.metadata.create_all` (not Alembic) per test, and Google Books must be mocked (`respx`) — never hit the network. From `backend/`:
 
 ```bash
 docker compose up -d db                                                   # Postgres must be running
@@ -56,7 +56,7 @@ npm run test:watch  # watch mode
 ```bash
 docker compose up --build      # in another terminal
 npx playwright install         # one-time
-npm run test:e2e               # auth flow is network-free; thread/reply use live Open Library search
+npm run test:e2e               # auth flow is network-free; thread/reply use live Google Books search
 ```
 
 ### Subagents & roadmap
@@ -70,7 +70,7 @@ Async end-to-end FastAPI app. The layering is strict:
 
 - **`models/`** — SQLAlchemy 2.0 ORM (`DeclarativeBase` in `models/base.py`). `models/__init__.py` imports every model so `Base.metadata` is fully populated — always import models through the package or this `__init__` so metadata stays complete.
 - **`schemas/`** — Pydantic v2 request/response models. Keep API I/O shapes here, never expose ORM models directly.
-- **`services/`** — business logic with no FastAPI types. `open_library.py` is the Open Library HTTP client (httpx, parses Works API + cover URLs); `auth.py` holds JWT (python-jose, HS256), bcrypt password hashing, and the `get_current_user` dependency.
+- **`services/`** — business logic with no FastAPI types. `google_books.py` is the Google Books HTTP client (httpx, parses the Volumes API into a normalized dict; optional `GOOGLE_BOOKS_API_KEY`, keyless fallback); `auth.py` holds JWT (python-jose, HS256), bcrypt password hashing, and the `get_current_user` / `get_current_user_optional` dependencies.
 - **`api/`** — thin route handlers. Each module owns an `APIRouter(prefix=...)` and is wired in `main.py`.
 - **`config.py`** — `Settings` (pydantic-settings) loaded from env / `.env`. `database.py` — async engine + `get_db` dependency (a session that auto-commits on success, rolls back on exception).
 
@@ -98,4 +98,4 @@ Vite + React 18 + React Router + Tailwind.
 
 ## Environment
 
-Backend reads env vars (see `backend/.env.example` and the `backend` service in `docker-compose.yml`): `DATABASE_URL`, `SECRET_KEY`, `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (optional, for OAuth), `OPEN_LIBRARY_BASE_URL`, `APP_NAME`.
+Backend reads env vars (see `backend/.env.example` and the `backend` service in `docker-compose.yml`): `DATABASE_URL`, `SECRET_KEY`, `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (optional, for OAuth), `GOOGLE_BOOKS_BASE_URL`, `GOOGLE_BOOKS_API_KEY` (optional; keyless fallback), `APP_NAME`.
