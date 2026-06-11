@@ -218,3 +218,34 @@ def test_dedup_key_uses_only_first_author():
 def test_dedup_key_none_when_title_missing():
     assert gb._dedup_key({"title": "", "author": "Anyone"}) is None
     assert gb._dedup_key({"title": None, "author": "Anyone"}) is None
+
+
+# ---------------------------------------------------------------------------
+# _completeness_score() helper for representative selection.
+# ---------------------------------------------------------------------------
+
+
+def test_completeness_score_weights_cover_highest():
+    with_cover = {"cover_url": "https://x/c.jpg"}
+    without = {"description": "d", "isbn_13": "9", "page_count": 1}
+    # cover alone (+4) beats three other fields (+3)
+    assert gb._completeness_score(with_cover) > gb._completeness_score(without)
+
+
+def test_completeness_score_sums_fields():
+    vol = {
+        "cover_url": "https://x/c.jpg",
+        "description": "d",
+        "isbn_13": "9781585675340",
+        "page_count": 200,
+        "ratings_count": 10,
+    }
+    assert gb._completeness_score(vol) == 8  # 4 + 1 + 1 + 1 + 1
+
+
+def test_completeness_score_ignores_zero_ratings():
+    assert gb._completeness_score({"ratings_count": 0}) == 0
+
+
+def test_completeness_score_empty_volume_is_zero():
+    assert gb._completeness_score({}) == 0

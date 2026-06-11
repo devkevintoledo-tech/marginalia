@@ -53,6 +53,22 @@ def _dedup_key(volume: dict[str, Any]) -> str | None:
     return f"{normalize(title)}\x1f{normalize(first_author)}"
 
 
+def _completeness_score(volume: dict[str, Any]) -> int:
+    """Higher = richer, more useful result card. Cover is weighted highest."""
+    score = 0
+    if volume.get("cover_url"):
+        score += 4
+    if volume.get("description"):
+        score += 1
+    if volume.get("isbn_13"):
+        score += 1
+    if volume.get("page_count"):
+        score += 1
+    if volume.get("ratings_count"):  # truthy ⇒ > 0
+        score += 1
+    return score
+
+
 def _category_to_slug(categories: list[str] | None) -> str | None:
     if not categories:
         return None
