@@ -28,7 +28,8 @@ services:
       SECRET_KEY: change-me-in-production
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      OPEN_LIBRARY_BASE_URL: https://openlibrary.org
+      GOOGLE_BOOKS_BASE_URL: https://www.googleapis.com/books/v1
+      GOOGLE_BOOKS_API_KEY: ${GOOGLE_BOOKS_API_KEY:-}
     ports:
       - "8000:8000"
     volumes:

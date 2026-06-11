@@ -90,7 +90,8 @@ async def auth_headers(client):
 async def book(db_session):
     """Seed a book directly (no Open Library round-trip) for thread/post tests."""
     b = Book(
-        open_library_id=f"OL{uuid.uuid4().hex[:8]}W",
+        source="google_books",
+        external_id=uuid.uuid4().hex[:12],
         title="The Test Book",
         author="A. Tester",
     )

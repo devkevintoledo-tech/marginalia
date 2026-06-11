@@ -43,7 +43,8 @@ async def _seed_genre_books(db_session, genre, n: int):
     books = []
     for i in range(n):
         b = Book(
-            open_library_id=f"OL{uuid.uuid4().hex[:8]}W",
+            source="google_books",
+            external_id=uuid.uuid4().hex[:12],
             title=f"Book {i}",
             author="Author",
             genre_id=genre.id,

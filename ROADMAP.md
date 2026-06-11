@@ -20,13 +20,13 @@ Make the MVP safe to change. This is the current focus.
 
 | Status | Feature | Touches |
 | --- | --- | --- |
-| 🟡 | **Test pyramid** — pytest (backend), Vitest + RTL (frontend unit), Playwright (e2e). Starter tests for login, create-thread, reply landed; full coverage ongoing. | `backend/tests/`, `frontend/src/**/*.test.jsx`, `frontend/e2e/` |
-| ⬜ | **CI workflow** — run backend + frontend unit tests on push/PR; e2e nightly. | `.github/workflows/` |
-| ⬜ | **Shelf uniqueness** — add `UNIQUE (user_id, book_id)` + migration (known gap in `CLAUDE.md`). | `backend/app/models/shelf.py`, `backend/alembic/versions/` |
-| ⬜ | **Real logout / token handling** — `/auth/logout` is a no-op stub; decide on refresh tokens or short-lived JWT + client clear. | `backend/app/api/auth.py:121`, `frontend/src/store/auth.js` |
-| ⬜ | **Pagination** — list endpoints return full result sets; add `limit`/`offset` (or cursor) to book/genre/thread lists. | `backend/app/api/{books,genres,threads}.py` |
-| ⬜ | **OpenAPI polish** — tags exist; add response models/examples, surface `/docs`. | `backend/app/main.py` |
-| ⬜ | **404 / error pages** — no `NotFound` route component; generic error strings only. | `frontend/src/App.jsx`, `frontend/src/pages/` |
+| 🟡 | **Test pyramid** — pytest (backend), Vitest + RTL (frontend unit), Playwright (e2e). Backend coverage: auth, posts, threads, shelves, pagination, openapi; frontend: Login, Navbar, NotFound; e2e: auth, thread, reply. Broader coverage still ongoing. | `backend/tests/`, `frontend/src/**/*.test.jsx`, `frontend/e2e/` |
+| ✅ | **CI workflow** — backend + frontend unit tests on push/PR; e2e nightly. | `.github/workflows/ci.yml` |
+| ✅ | **Shelf uniqueness** — `UNIQUE (user_id, book_id)` constraint + migration `5e4fc04a4b1d`. | `backend/app/models/shelf.py`, `backend/alembic/versions/` |
+| 🟡 | **Real logout / token handling** — frontend calls `POST /auth/logout` then clears the JWT; server endpoint is still a stateless no-op (no refresh/revocation). Strategy = short-lived JWT + client clear; revisit if token revocation is needed. | `backend/app/api/auth.py:121`, `frontend/src/store/auth.js` |
+| ✅ | **Pagination** — `limit`/`offset` on book/genre/post lists (thread lists are served under book/genre). | `backend/app/api/{books,genres,posts}.py` |
+| 🟡 | **OpenAPI polish** — tags + response models in place, `/docs` & `/redoc` surfaced by default; response examples still to add. | `backend/app/main.py` |
+| ✅ | **404 / error pages** — `NotFound` page + wildcard route. Generic error strings on data-fetch failures remain. | `frontend/src/App.jsx`, `frontend/src/pages/NotFound.jsx` |
 
 ---
 
@@ -37,11 +37,13 @@ Round out the spec'd v1 behaviors that are schema-ready but not exposed.
 | Status | Feature | Touches |
 | --- | --- | --- |
 | ✅ | Email/password + Google OAuth auth, JWT sessions | `backend/app/api/auth.py`, `backend/app/services/auth.py` |
-| ✅ | Open Library search + book cache, genre pages, shelves | `backend/app/api/{books,genres,users}.py`, `backend/app/services/open_library.py` |
+| ✅ | Google Books search + book cache, genre pages, shelves | `backend/app/api/{books,genres,users}.py`, `backend/app/services/google_books.py` |
 | ✅ | Threads (book XOR genre), 2-level posts/replies, upvotes | `backend/app/api/{threads,posts}.py`, `frontend/src/pages/Thread.jsx` |
 | ⬜ | **Edit/delete threads & posts** — no endpoints today; content is immutable. | `backend/app/api/{threads,posts}.py`, `frontend/src/components/Post.jsx` |
 | ⬜ | **Vote toggling / downvotes** — upvote only increments; add un-vote and per-user vote tracking (new `votes` table). | `backend/app/api/{threads,posts}.py`, new model |
 | ⬜ | **Profile editing** — `User` has only `avatar_url`; add bio + edit endpoint/page. | `backend/app/models/user.py`, `backend/app/api/users.py`, `frontend/src/pages/Profile.jsx` |
+| ✅ | **Book metadata enrichment** — Google Books search now caches description, ISBN-13, publisher, page count, ratings, language, categories, and links; the book page surfaces them. Categories auto-map to a seeded genre. | `backend/app/api/books.py`, `backend/app/services/google_books.py`, `frontend/src/pages/Book.jsx` |
+| ⬜ | **Duplicate search results** — Google Books reduces but does not eliminate duplicate editions of the same work. Optional conservative display-dedup by normalized `(title, author)`, keeping the entry with the best cover/metadata. | `backend/app/api/books.py` or `frontend/src/pages/Search.jsx` |
 | ⬜ | **Thread sorting/filtering** — sort by new/top, filter genre threads by date. | `backend/app/api/{books,genres}.py`, `frontend/src/pages/{Book,Genre}.jsx` |
 | ⬜ | **Empty/loading-state polish** across pages. | `frontend/src/pages/` |
 
@@ -103,7 +105,7 @@ No moderation surface exists today (no roles, flags, or admin tools).
 
 | Status | Feature | Touches |
 | --- | --- | --- |
-| ⬜ | **Background jobs / queue** — async Open Library sync, notification fan-out. | new worker service |
+| ⬜ | **Background jobs / queue** — async Google Books sync, notification fan-out. | new worker service |
 | ⬜ | **Email verification + password reset** — transactional email flows. | `backend/app/api/auth.py`, email service |
 | ⬜ | **Data export** — user shelf/post export. | new endpoint |
 | ⬜ | **Observability** — structured logging, metrics, error tracking. | `backend/app/main.py`, infra |
