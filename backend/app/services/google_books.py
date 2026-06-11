@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+import unicodedata
 from datetime import date, datetime
 from typing import Any
 
@@ -23,6 +25,20 @@ _CATEGORY_SLUGS: list[tuple[str, str]] = [
     ("literary", "literary-fiction"),
     ("fiction", "literary-fiction"),  # generic fiction fallback (last)
 ]
+
+
+def normalize(text: str | None) -> str:
+    """Canonicalize a string for duplicate matching.
+
+    NFKD-strip accents, lowercase, drop punctuation, collapse whitespace.
+    """
+    if not text:
+        return ""
+    decomposed = unicodedata.normalize("NFKD", text)
+    no_accents = "".join(c for c in decomposed if not unicodedata.combining(c))
+    lowered = no_accents.lower()
+    no_punct = re.sub(r"[^\w\s]", " ", lowered)
+    return re.sub(r"\s+", " ", no_punct).strip()
 
 
 def _category_to_slug(categories: list[str] | None) -> str | None:

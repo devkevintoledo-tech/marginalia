@@ -176,3 +176,25 @@ async def test_search_books_fallback_dedupes_by_external_id():
     )
     results = await gb.search_books("grief")
     assert [r["external_id"] for r in results] == ["shared", "unique"]
+
+
+# ---------------------------------------------------------------------------
+# normalize() helper for dedup matching.
+# ---------------------------------------------------------------------------
+
+
+def test_normalize_lowercases_and_collapses_whitespace():
+    assert gb.normalize("  The   Hobbit  ") == "the hobbit"
+
+
+def test_normalize_strips_accents():
+    assert gb.normalize("Les Misérables") == "les miserables"
+
+
+def test_normalize_strips_punctuation():
+    assert gb.normalize("Slaughterhouse-Five!") == "slaughterhouse five"
+
+
+def test_normalize_handles_empty():
+    assert gb.normalize("") == ""
+    assert gb.normalize(None) == ""
