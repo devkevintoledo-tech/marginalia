@@ -347,3 +347,27 @@ async def test_search_books_dedups_editions():
     # at the first-seen position; c is a different work and is kept.
     assert ids == ["b", "c"]
     assert results[0]["cover_url"] is not None  # richer edition's data won
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_search_books_dedups_on_title_only_path():
+    """The early return (enough title hits, no broad pass) also dedups."""
+    base = gb.settings.GOOGLE_BOOKS_BASE_URL
+    title_payload = {
+        "items": [
+            _api_volume("a", "Dune", "Frank Herbert"),
+            _api_volume("b", "Dune", "Frank Herbert", cover=True),  # dup of a, richer
+            _api_volume("c", "Dune Messiah", "Frank Herbert"),
+            _api_volume("d", "Children of Dune", "Frank Herbert"),
+        ]
+    }
+
+    route = respx.get(f"{base}/volumes").mock(
+        return_value=Response(200, json=title_payload)
+    )
+
+    results = await gb.search_books("dune")
+    # 4 title hits (>= _MIN_TITLE_RESULTS) ⇒ broad pass NOT made, but a/b still collapse.
+    assert route.call_count == 1
+    assert [r["external_id"] for r in results] == ["b", "c", "d"]
