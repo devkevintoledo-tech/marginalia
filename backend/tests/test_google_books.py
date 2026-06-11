@@ -104,8 +104,8 @@ async def test_search_books_empty_when_no_items():
 # Two-pass relevance: title-weighted search first, broad fallback second.
 # ---------------------------------------------------------------------------
 
-def _volume(vid: str, title: str = "T") -> dict:
-    return {"id": vid, "volumeInfo": {"title": title}}
+def _volume(vid: str, title: str | None = None) -> dict:
+    return {"id": vid, "volumeInfo": {"title": title if title is not None else vid}}
 
 
 def _route_by_query(mapping: dict[str, list[dict]]):
@@ -308,3 +308,42 @@ def test_dedup_tie_keeps_earlier_volume():
     out = gb._dedup_volumes([a, b])
     assert [v["external_id"] for v in out] == ["a"]
     assert out[0]["cover_url"] == "https://x/a.jpg"  # tie ⇒ earlier kept
+
+
+# ---------------------------------------------------------------------------
+# search_books() dedup integration.
+# ---------------------------------------------------------------------------
+
+
+def _api_volume(ext_id, title, author, *, cover=False):
+    info = {"title": title, "authors": [author]}
+    if cover:
+        info["imageLinks"] = {"thumbnail": f"http://books.google.com/x?id={ext_id}"}
+    return {"id": ext_id, "volumeInfo": info}
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_search_books_dedups_editions():
+    base = gb.settings.GOOGLE_BOOKS_BASE_URL
+    title_payload = {
+        "items": [
+            _api_volume("a", "The Hobbit", "J.R.R. Tolkien"),
+            _api_volume("b", "The Hobbit", "J.R.R. Tolkien", cover=True),
+        ]
+    }
+    # Two title hits (< _MIN_TITLE_RESULTS) ⇒ broad pass also runs.
+    broad_payload = {"items": [_api_volume("c", "Hobbit Companion", "Other Author")]}
+
+    route = respx.get(f"{base}/volumes")
+    route.side_effect = [
+        Response(200, json=title_payload),
+        Response(200, json=broad_payload),
+    ]
+
+    results = await gb.search_books("the hobbit")
+    ids = [r["external_id"] for r in results]
+    # a and b are duplicate editions; the richer one (b, has cover) wins wholesale
+    # at the first-seen position; c is a different work and is kept.
+    assert ids == ["b", "c"]
+    assert results[0]["cover_url"] is not None  # richer edition's data won

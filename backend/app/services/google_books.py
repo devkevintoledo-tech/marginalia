@@ -208,14 +208,14 @@ async def search_books(query: str) -> list[dict[str, Any]]:
     async with httpx.AsyncClient(timeout=15.0) as client:
         title_results = await _query_volumes(client, f"intitle:{query}")
         if len(title_results) >= _MIN_TITLE_RESULTS:
-            return title_results
+            return _dedup_volumes(title_results)
 
         broad_results = await _query_volumes(client, query)
 
     seen = {r["external_id"] for r in title_results}
     merged = list(title_results)
     merged.extend(r for r in broad_results if r["external_id"] not in seen)
-    return merged
+    return _dedup_volumes(merged)
 
 
 async def get_book(volume_id: str) -> dict[str, Any]:
