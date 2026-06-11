@@ -11,7 +11,7 @@ from app.models.base import Base  # noqa: F401 — ensure metadata loaded
 from app.schemas.book import BookOut, ShelfIn, ShelfOut
 from app.schemas.thread import ThreadSummary
 from app.services import google_books
-from app.services.auth import get_current_user
+from app.services.auth import get_current_user, get_current_user_optional
 
 # ---------------------------------------------------------------------------
 # Lazy model imports — models live in app/models/ but we reference them by
@@ -101,8 +101,17 @@ async def search_books(
 async def get_book(
     book_id: UUID,
     db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user_optional),
 ):
-    return await _get_book_or_404(book_id, db)
+    book = await _get_book_or_404(book_id, db)
+    out = BookOut.model_validate(book)
+    if current_user is not None:
+        stmt = select(Shelf.status).where(
+            Shelf.user_id == current_user.id,
+            Shelf.book_id == book_id,
+        )
+        out.shelf_status = (await db.execute(stmt)).scalar_one_or_none()
+    return out
 
 
 @router.get("/{book_id}/threads", response_model=list[ThreadSummary])
