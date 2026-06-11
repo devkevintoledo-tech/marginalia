@@ -249,3 +249,62 @@ def test_completeness_score_ignores_zero_ratings():
 
 def test_completeness_score_empty_volume_is_zero():
     assert gb._completeness_score({}) == 0
+
+
+# ---------------------------------------------------------------------------
+# _dedup_volumes() — order-preserving collapse of duplicate editions.
+# ---------------------------------------------------------------------------
+
+
+def _vol(ext_id, title, author, **extra):
+    return {"external_id": ext_id, "title": title, "author": author, **extra}
+
+
+def test_dedup_keeps_richer_of_two_editions():
+    thin = _vol("a", "The Hobbit", "J.R.R. Tolkien")
+    rich = _vol("b", "The Hobbit", "J.R.R. Tolkien", cover_url="https://x/c.jpg")
+    out = gb._dedup_volumes([thin, rich])
+    # The richer edition wins wholesale (its own external_id + metadata), kept at
+    # the first member's position.
+    assert [v["external_id"] for v in out] == ["b"]
+    assert out[0]["cover_url"] == "https://x/c.jpg"
+
+
+def test_dedup_collapses_accent_and_case_variants():
+    a = _vol("a", "Les Misérables", "Victor Hugo")
+    b = _vol("b", "les miserables", "victor hugo", cover_url="https://x/c.jpg")
+    out = gb._dedup_volumes([a, b])
+    assert len(out) == 1
+
+
+def test_dedup_keeps_different_authors_separate():
+    a = _vol("a", "Ulysses", "James Joyce")
+    b = _vol("b", "Ulysses", "Alfred Tennyson")
+    out = gb._dedup_volumes([a, b])
+    assert {v["external_id"] for v in out} == {"a", "b"}
+
+
+def test_dedup_passes_through_title_less_volumes():
+    a = _vol("a", "", "Nobody")
+    b = _vol("b", None, "Nobody")
+    out = gb._dedup_volumes([a, b])
+    assert [v["external_id"] for v in out] == ["a", "b"]
+
+
+def test_dedup_preserves_relevance_order_and_position():
+    first = _vol("a", "Dune", "Frank Herbert")  # thin, but appears first
+    middle = _vol("b", "Hyperion", "Dan Simmons")
+    dup = _vol("c", "Dune", "Frank Herbert", cover_url="https://x/c.jpg")  # richer, later
+    out = gb._dedup_volumes([first, middle, dup])
+    # Dune's richer edition (c) surfaces at the earlier (first-seen) Dune slot,
+    # ahead of Hyperion — work-level relevance order is preserved.
+    assert [v["external_id"] for v in out] == ["c", "b"]
+    assert out[0]["cover_url"] == "https://x/c.jpg"
+
+
+def test_dedup_tie_keeps_earlier_volume():
+    a = _vol("a", "1984", "George Orwell", cover_url="https://x/a.jpg")
+    b = _vol("b", "1984", "George Orwell", cover_url="https://x/b.jpg")
+    out = gb._dedup_volumes([a, b])
+    assert [v["external_id"] for v in out] == ["a"]
+    assert out[0]["cover_url"] == "https://x/a.jpg"  # tie ⇒ earlier kept

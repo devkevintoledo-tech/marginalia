@@ -69,6 +69,32 @@ def _completeness_score(volume: dict[str, Any]) -> int:
     return score
 
 
+def _dedup_volumes(volumes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Collapse duplicate editions to the richest representative per group.
+
+    Order is preserved: each surviving volume keeps the output position of its
+    group's first member. Title-less volumes are never grouped. On a score tie
+    the earlier (more relevant) volume is kept.
+    """
+    out: list[dict[str, Any]] = []
+    positions: dict[str, int] = {}  # key -> index in `out`
+    for volume in volumes:
+        key = _dedup_key(volume)
+        if key is None or key not in positions:
+            if key is not None:
+                positions[key] = len(out)
+            out.append(volume)
+            continue
+        idx = positions[key]
+        if _completeness_score(volume) > _completeness_score(out[idx]):
+            # Replace the representative wholesale: the richer edition is a real,
+            # distinct Google volume, so its external_id and metadata must stay
+            # together (the route upserts/links Book rows by external_id). We only
+            # keep the *position* of the group's first member to preserve order.
+            out[idx] = volume
+    return out
+
+
 def _category_to_slug(categories: list[str] | None) -> str | None:
     if not categories:
         return None
