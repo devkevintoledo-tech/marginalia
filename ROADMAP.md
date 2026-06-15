@@ -43,7 +43,7 @@ Round out the spec'd v1 behaviors that are schema-ready but not exposed.
 | ⬜ | **Vote toggling / downvotes** — upvote only increments; add un-vote and per-user vote tracking (new `votes` table). | `backend/app/api/{threads,posts}.py`, new model |
 | ⬜ | **Profile editing** — `User` has only `avatar_url`; add bio + edit endpoint/page. | `backend/app/models/user.py`, `backend/app/api/users.py`, `frontend/src/pages/Profile.jsx` |
 | ✅ | **Book metadata enrichment** — Google Books search now caches description, ISBN-13, publisher, page count, ratings, language, categories, and links; the book page surfaces them. Categories auto-map to a seeded genre. | `backend/app/api/books.py`, `backend/app/services/google_books.py`, `frontend/src/pages/Book.jsx` |
-| ⬜ | **Duplicate search results** — Google Books reduces but does not eliminate duplicate editions of the same work. Optional conservative display-dedup by normalized `(title, author)`, keeping the entry with the best cover/metadata. | `backend/app/api/books.py` or `frontend/src/pages/Search.jsx` |
+| ✅ | **Duplicate search results** — service-layer dedup collapses duplicate editions by normalized `(title, first author)`, keeping the richest-metadata edition wholesale at the first-seen position; relevance order preserved. | `backend/app/services/google_books.py` |
 | ⬜ | **Thread sorting/filtering** — sort by new/top, filter genre threads by date. | `backend/app/api/{books,genres}.py`, `frontend/src/pages/{Book,Genre}.jsx` |
 | ⬜ | **Empty/loading-state polish** across pages. | `frontend/src/pages/` |
 
