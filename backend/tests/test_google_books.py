@@ -179,6 +179,79 @@ async def test_search_books_fallback_dedupes_by_external_id():
 
 
 # ---------------------------------------------------------------------------
+# _cover_url() — prefer higher-resolution image links, upgrade the URL.
+# ---------------------------------------------------------------------------
+
+
+def test_cover_url_none_for_falsy_input():
+    assert gb._cover_url(None) is None
+    assert gb._cover_url({}) is None
+
+
+def test_cover_url_prefers_large_over_thumbnail():
+    links = {
+        "thumbnail": "https://books.google.com/x?id=A&zoom=5",
+        "large": "https://books.google.com/x?id=A&large",
+    }
+    assert gb._cover_url(links) == "https://books.google.com/x?id=A&large"
+
+
+def test_cover_url_prefers_largest_available_key():
+    links = {
+        "smallThumbnail": "https://books.google.com/x?small_thumb",
+        "thumbnail": "https://books.google.com/x?thumb",
+        "small": "https://books.google.com/x?small",
+        "medium": "https://books.google.com/x?medium",
+        "large": "https://books.google.com/x?large",
+        "extraLarge": "https://books.google.com/x?extra_large",
+    }
+    assert gb._cover_url(links) == "https://books.google.com/x?extra_large"
+
+
+def test_cover_url_falls_back_to_thumbnail():
+    links = {
+        "smallThumbnail": "https://books.google.com/x?small_thumb",
+        "thumbnail": "https://books.google.com/x?thumb",
+    }
+    assert gb._cover_url(links) == "https://books.google.com/x?thumb"
+
+
+def test_cover_url_falls_back_to_small_thumbnail():
+    links = {"smallThumbnail": "https://books.google.com/x?small_thumb"}
+    assert gb._cover_url(links) == "https://books.google.com/x?small_thumb"
+
+
+def test_cover_url_upgrades_http_to_https():
+    links = {"thumbnail": "http://books.google.com/x?id=A"}
+    assert gb._cover_url(links) == "https://books.google.com/x?id=A"
+
+
+def test_cover_url_strips_edge_curl_and_bumps_zoom():
+    links = {
+        "thumbnail": (
+            "http://books.google.com/books/content?id=XXX&printsec=frontcover"
+            "&img=1&zoom=1&edge=curl&source=gbs_api"
+        )
+    }
+    assert gb._cover_url(links) == (
+        "https://books.google.com/books/content?id=XXX&printsec=frontcover"
+        "&img=1&zoom=0&source=gbs_api"
+    )
+
+
+def test_cover_url_transforms_apply_to_chosen_high_res_key():
+    # Requirement 3 is key-independent: edge/zoom rewrites apply to whichever key
+    # wins, not just the thumbnail fallback.
+    links = {
+        "large": "http://books.google.com/books/content?id=A&zoom=1&edge=curl",
+        "thumbnail": "http://books.google.com/x?thumb",
+    }
+    assert gb._cover_url(links) == (
+        "https://books.google.com/books/content?id=A&zoom=0"
+    )
+
+
+# ---------------------------------------------------------------------------
 # normalize() helper for dedup matching.
 # ---------------------------------------------------------------------------
 
