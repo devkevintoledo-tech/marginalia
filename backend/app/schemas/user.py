@@ -2,13 +2,15 @@ from typing import Optional
 from uuid import UUID
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, model_validator
+from pydantic import BaseModel, EmailStr, Field, model_validator
+
+MIN_PASSWORD_LENGTH = 8
 
 
 class UserCreate(BaseModel):
     email: EmailStr
     username: str
-    password: str
+    password: str = Field(min_length=MIN_PASSWORD_LENGTH)
 
 
 class UserLogin(BaseModel):
@@ -30,3 +32,16 @@ class Token(BaseModel):
     token: str
     token_type: str = "bearer"
     user: UserOut
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=MIN_PASSWORD_LENGTH)
+
+
+class MessageResponse(BaseModel):
+    message: str

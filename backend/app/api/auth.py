@@ -1,3 +1,6 @@
+import secrets
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
@@ -5,14 +8,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
 from app.database import get_db
+from app.models.password_reset import PasswordResetToken
 from app.models.user import User, AuthProvider
-from app.schemas.user import Token, UserCreate, UserLogin, UserOut
+from app.schemas.user import (
+    ForgotPasswordRequest,
+    MessageResponse,
+    ResetPasswordRequest,
+    Token,
+    UserCreate,
+    UserLogin,
+    UserOut,
+)
 from app.services.auth import (
     create_access_token,
+    generate_reset_token,
     get_current_user,
     hash_password,
+    hash_reset_token,
     verify_password,
 )
+from app.services.email import EmailSender, build_reset_url, email_sender_dep
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 settings = Settings()
@@ -100,9 +115,16 @@ async def google_callback(request: Request, db: AsyncSession = Depends(get_db)):
     user = result.scalar_one_or_none()
 
     if user is None:
+        base_username = (userinfo.get("email", "").split("@")[0]) or "user"
+        username = base_username
+        while True:
+            existing = await db.execute(select(User).where(User.username == username))
+            if existing.scalar_one_or_none() is None:
+                break
+            username = f"{base_username}{secrets.randbelow(10000)}"
         user = User(
             email=email,
-            username=userinfo.get("email", "").split("@")[0],
+            username=username,
             avatar_url=userinfo.get("picture"),
             auth_provider=AuthProvider.google,
         )
@@ -116,6 +138,66 @@ async def google_callback(request: Request, db: AsyncSession = Depends(get_db)):
 
     token = create_access_token({"sub": str(user.id)})
     return Token(token=token, user=UserOut.model_validate(user))
+
+
+@router.post("/forgot-password", response_model=MessageResponse)
+async def forgot_password(
+    payload: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    sender: EmailSender = Depends(email_sender_dep),
+):
+    result = await db.execute(select(User).where(User.email == payload.email))
+    user = result.scalar_one_or_none()
+
+    # Only send for real email-auth accounts; never reveal whether the account
+    # exists (anti-enumeration) — response is identical in all branches.
+    if user and user.password_hash and user.auth_provider == AuthProvider.email:
+        raw, token_hash = generate_reset_token()
+        reset_token = PasswordResetToken(
+            user_id=user.id,
+            token_hash=token_hash,
+            expires_at=datetime.now(timezone.utc)
+            + timedelta(minutes=settings.PASSWORD_RESET_TOKEN_TTL_MINUTES),
+        )
+        db.add(reset_token)
+        # Persist the token before emailing so a failed commit never yields a
+        # live reset link whose hash isn't in the DB. get_db's success-path
+        # commit still runs, but the row is already durable here.
+        await db.commit()
+        await sender.send_password_reset(user.email, build_reset_url(raw))
+
+    return MessageResponse(
+        message="If an account with that email exists, a reset link has been sent."
+    )
+
+
+@router.post("/reset-password", response_model=MessageResponse)
+async def reset_password(payload: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    token_hash = hash_reset_token(payload.token)
+    result = await db.execute(
+        select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash)
+    )
+    row = result.scalar_one_or_none()
+
+    now = datetime.now(timezone.utc)
+    if row is None or row.used_at is not None or row.expires_at <= now:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token",
+        )
+
+    user_result = await db.execute(select(User).where(User.id == row.user_id))
+    user = user_result.scalar_one_or_none()
+    if user is None or user.password_hash is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token",
+        )
+
+    user.password_hash = hash_password(payload.new_password)
+    row.used_at = now
+    await db.commit()
+    return MessageResponse(message="Password updated.")
 
 
 @router.post("/logout")
