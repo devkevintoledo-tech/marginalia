@@ -57,4 +57,20 @@ describe('Login page', () => {
     await waitFor(() => expect(useAuthStore.getState().token).toBe('tok-123'))
     expect(useAuthStore.getState().user).toEqual({ id: '1', username: 'ada' })
   })
+
+  it('renders the backend detail message on a failed login', async () => {
+    client.post.mockRejectedValue({
+      response: { data: { detail: 'Incorrect email or password' } },
+    })
+    const user = userEvent.setup()
+    const { container } = renderLogin()
+
+    await user.type(screen.getByRole('textbox'), 'ada@example.com')
+    await user.type(container.querySelector('input[type="password"]'), 'secret123')
+    await user.click(screen.getByRole('button', { name: /sign in/i }))
+
+    await waitFor(() =>
+      expect(screen.getByText('Incorrect email or password')).toBeInTheDocument(),
+    )
+  })
 })
