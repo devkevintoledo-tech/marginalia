@@ -9,8 +9,11 @@ settings = Settings()
 app = FastAPI(
     title=settings.APP_NAME,
     openapi_tags=[
-        {"name": "auth", "description": "Register, login, OAuth, and JWT token management."},
-        {"name": "books", "description": "Open Library search, book detail, shelf management."},
+        {
+            "name": "auth",
+            "description": "Register, login, OAuth, password reset, and JWT token management.",
+        },
+        {"name": "books", "description": "Google Books search, book detail, shelf management."},
         {"name": "genres", "description": "Genre listing and genre-scoped book/thread lists."},
         {"name": "threads", "description": "Create and fetch discussion threads."},
         {"name": "posts", "description": "Post and reply within a thread, upvote."},
