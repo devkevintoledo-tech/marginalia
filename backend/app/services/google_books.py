@@ -130,13 +130,28 @@ def _isbn_13(identifiers: list[dict[str, Any]] | None) -> str | None:
     return None
 
 
+# Highest-resolution first; Google Books only returns a subset per volume.
+_COVER_KEYS = ("extraLarge", "large", "medium", "small", "thumbnail", "smallThumbnail")
+
+
+def _upgrade_cover_url(url: str) -> str:
+    """Apply the recoverable URL string transforms to a Google Books cover URL.
+
+    Force https, drop the fake page-curl effect, and request a larger render.
+    Each replace is a no-op when its substring isn't present, so this is
+    idempotent and safe to run on already-upgraded URLs.
+    """
+    url = url.replace("http://", "https://", 1)
+    return url.replace("&edge=curl", "").replace("zoom=1", "zoom=0")
+
+
 def _cover_url(image_links: dict[str, Any] | None) -> str | None:
     if not image_links:
         return None
-    url = image_links.get("thumbnail") or image_links.get("smallThumbnail")
+    url = next((image_links[k] for k in _COVER_KEYS if image_links.get(k)), None)
     if not url:
         return None
-    return url.replace("http://", "https://", 1)
+    return _upgrade_cover_url(url)
 
 
 def _map_volume(volume: dict[str, Any]) -> dict[str, Any]:

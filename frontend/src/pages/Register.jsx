@@ -1,16 +1,28 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useRegister } from '../api/auth'
+import { errorMessage } from '../api/errors'
 
 function Register() {
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [formError, setFormError] = useState('')
   const navigate = useNavigate()
   const { mutate: register, isPending, error } = useRegister()
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    if (password.length < 8) {
+      setFormError('Password must be at least 8 characters.')
+      return
+    }
+    if (password !== confirm) {
+      setFormError('Passwords do not match.')
+      return
+    }
+    setFormError('')
     register({ email, username, password }, { onSuccess: () => navigate('/') })
   }
 
@@ -26,9 +38,9 @@ function Register() {
           <p className="text-zinc-600 text-sm mt-1">Join the conversation.</p>
         </div>
 
-        {error && (
+        {(formError || error) && (
           <div className="border border-red-800/60 bg-red-950/40 text-red-400 px-4 py-3 text-sm mb-6">
-            {error.response?.data?.message ?? 'Registration failed. Please try again.'}
+            {formError || errorMessage(error, 'Registration failed. Please try again.')}
           </div>
         )}
 
@@ -65,6 +77,19 @@ function Register() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={8}
+              className="w-full bg-zinc-900 border border-zinc-800 text-zinc-100 px-3 py-3 text-sm focus:outline-none focus:border-amber-700 transition-colors"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-500 uppercase tracking-widest mb-1.5">
+              Confirm password
+            </label>
+            <input
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
               required
               className="w-full bg-zinc-900 border border-zinc-800 text-zinc-100 px-3 py-3 text-sm focus:outline-none focus:border-amber-700 transition-colors"
             />

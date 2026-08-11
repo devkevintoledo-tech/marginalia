@@ -1,15 +1,28 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLogin } from '../api/auth'
+import { errorMessage } from '../api/errors'
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [formError, setFormError] = useState('')
   const navigate = useNavigate()
   const { mutate: login, isPending, error } = useLogin()
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    if (!EMAIL_RE.test(email)) {
+      setFormError('Please enter a valid email address.')
+      return
+    }
+    if (!password) {
+      setFormError('Please enter your password.')
+      return
+    }
+    setFormError('')
     login({ email, password }, { onSuccess: () => navigate('/') })
   }
 
@@ -25,9 +38,9 @@ function Login() {
           <p className="text-zinc-600 text-sm mt-1">Welcome back.</p>
         </div>
 
-        {error && (
+        {(formError || error) && (
           <div className="border border-red-800/60 bg-red-950/40 text-red-400 px-4 py-3 text-sm mb-6">
-            {error.response?.data?.message ?? 'Login failed. Please try again.'}
+            {formError || errorMessage(error, 'Login failed. Please try again.')}
           </div>
         )}
 
@@ -64,6 +77,15 @@ function Login() {
             {isPending ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
+
+        <p className="text-sm mt-4 text-center">
+          <Link
+            to="/forgot-password"
+            className="text-zinc-500 hover:text-amber-500 transition-colors"
+          >
+            Forgot password?
+          </Link>
+        </p>
 
         <div className="mt-3">
           <a

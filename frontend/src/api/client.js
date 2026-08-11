@@ -13,4 +13,16 @@ client.interceptors.request.use((config) => {
   return config
 })
 
+// On a 401, clear auth state so the app falls back to the signed-out view.
+// We don't redirect here — routing/components decide what to show.
+client.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      useAuthStore.getState().logout()
+    }
+    return Promise.reject(error)
+  },
+)
+
 export default client

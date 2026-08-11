@@ -5,6 +5,7 @@ from app.models.book import Book
 from app.models.shelf import Shelf, ShelfStatus
 from app.models.thread import Thread
 from app.models.post import Post
+from app.models.password_reset import PasswordResetToken
 
 __all__ = [
     "Base",
@@ -16,4 +17,5 @@ __all__ = [
     "ShelfStatus",
     "Thread",
     "Post",
+    "PasswordResetToken",
 ]

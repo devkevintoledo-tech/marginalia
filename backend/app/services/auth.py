@@ -1,3 +1,5 @@
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -34,6 +36,17 @@ def verify_password(plain: str, hashed: str) -> bool:
         return bcrypt.checkpw(plain.encode("utf-8")[:72], hashed.encode("utf-8"))
     except (ValueError, TypeError):
         return False
+
+
+def hash_reset_token(raw: str) -> str:
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def generate_reset_token() -> tuple[str, str]:
+    """Return ``(raw_token, sha256_hex)``. The raw token goes in the email link;
+    only the hash is persisted, so a leaked DB row can't be replayed."""
+    raw = secrets.token_urlsafe(32)
+    return raw, hash_reset_token(raw)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
